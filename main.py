@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.Externals.api.middleware import setup_middleware
 from src.Externals.api.routes import auth, reports, users, entities, health
 from src.Externals.websocket.handlers import router as websocket_router
-from src.Externals.database.connection import initialize_database
 
 # Create FastAPI app
 app = FastAPI(
@@ -36,10 +35,11 @@ app.include_router(websocket_router)
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and demo data"""
-    await initialize_database()
+    # TODO: Database initialization temporarily disabled - database module not yet implemented
+    # await initialize_database() 
     print("✅ Veritas Backend API started successfully!")
-    print("📡 REST API: http://0.0.0.0:8000/docs")
-    print("🔌 WebSocket: ws://0.0.0.0:8000/ws")
+    print("📡 REST API: http://0.0.0.0:5000/docs")
+    print("🔌 WebSocket: ws://0.0.0.0:5000/ws")
 
 @app.get("/")
 async def root():

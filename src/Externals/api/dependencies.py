@@ -13,7 +13,7 @@ from src.UseCases import (
     GetReportsUseCase, AuthenticateUserUseCase, NotifyUserUseCase
 )
 from src.Gateways.agents import AgentOrchestrator
-from src.Gateways.auth import OIDCGateway, JWTValidator
+from src.Gateways.auth import OIDCGateway, JWTValidator, SessionManager
 from src.Gateways.repository import ReportRepository, UserRepository, EntityRepository
 from src.Gateways.notifications import WebSocketGateway
 
@@ -21,6 +21,7 @@ from src.Gateways.notifications import WebSocketGateway
 _agent_orchestrator = None
 _oidc_gateway = None
 _jwt_validator = None
+_session_manager = None
 _repositories = {}
 _use_cases = {}
 
@@ -54,6 +55,13 @@ def get_jwt_validator() -> JWTValidator:
             algorithm=os.getenv("JWT_ALGORITHM", "HS256")
         )
     return _jwt_validator
+
+def get_session_manager() -> SessionManager:
+    """Get Session Manager instance"""
+    global _session_manager
+    if _session_manager is None:
+        _session_manager = SessionManager(ttl_minutes=10)
+    return _session_manager
 
 # Repository dependencies
 def get_report_repository() -> ReportRepository:

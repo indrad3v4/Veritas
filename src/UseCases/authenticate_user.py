@@ -4,12 +4,21 @@ Authenticate User Use Case - OIDC integration
 from typing import Protocol, Dict, Any
 from src.Entities import User, UserRole
 
+
 class OIDCGatewayProtocol(Protocol):
-    async def validate_token(self, token: str) -> Dict[str, Any]: ...
+
+    async def validate_token(self, token: str) -> Dict[str, Any]:
+        ...
+
 
 class UserRepositoryProtocol(Protocol):
-    async def get_by_email(self, email: str) -> User | None: ...
-    async def save(self, user: User) -> User: ...
+
+    async def get_by_email(self, email: str) -> User | None:
+        ...
+
+    async def save(self, user: User) -> User:
+        ...
+
 
 class AuthenticateUserUseCase:
     """
@@ -22,11 +31,8 @@ class AuthenticateUserUseCase:
     - Update existing user profile
     """
 
-    def __init__(
-        self,
-        oidc_gateway: OIDCGatewayProtocol,
-        user_repository: UserRepositoryProtocol
-    ):
+    def __init__(self, oidc_gateway: OIDCGatewayProtocol,
+                 user_repository: UserRepositoryProtocol):
         self.oidc = oidc_gateway
         self.repository = user_repository
 
@@ -41,7 +47,8 @@ class AuthenticateUserUseCase:
 
         # Step 2: Extract user info from claims
         email = claims.get("email")
-        name = claims.get("name") or claims.get("given_name", "") + " " + claims.get("family_name", "")
+        name = claims.get("name") or claims.get(
+            "given_name", "") + " " + claims.get("family_name", "")
         roles_claim = claims.get("roles", [])
         entity_access = claims.get("entity_access", [])
         entity_names = claims.get("entity_names", [])
@@ -51,6 +58,7 @@ class AuthenticateUserUseCase:
 
         # Step 3: Convert roles to UserRole enums
         user_roles = []
+        print("Claims: " + str(claims))
         for role_str in roles_claim:
             try:
                 user_roles.append(UserRole(role_str))
@@ -74,11 +82,11 @@ class AuthenticateUserUseCase:
         else:
             # Create new user
             new_user = User(
-                id=claims.get("sub") or email,  # Use 'sub' claim or email as ID
+                id=claims.get("sub")
+                or email,  # Use 'sub' claim or email as ID
                 email=email,
                 name=name,
                 roles=user_roles,
                 entity_access=entity_access,
-                entity_names=entity_names
-            )
+                entity_names=entity_names)
             return await self.repository.save(new_user)

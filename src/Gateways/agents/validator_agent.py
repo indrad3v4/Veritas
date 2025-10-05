@@ -10,6 +10,7 @@ from typing import Dict, Any, List
 from openai import AsyncOpenAI
 from src.Entities import ValidationResult
 
+
 class ValidatorAgent:
     """
     Single Agent: XLSX File Validation
@@ -65,7 +66,8 @@ Odpowiadaj ZAWSZE w JSON:
     "warnings": ["ostrzeżenie 1", "ostrzeżenie 2"]
 }"""
 
-    async def validate(self, file_data: bytes, filename: str) -> ValidationResult:
+    async def validate(self, file_data: bytes,
+                       filename: str) -> ValidationResult:
         """
         Run single-agent validation loop WITH LOGGING
 
@@ -93,8 +95,7 @@ Odpowiadaj ZAWSZE w JSON:
                     "issue": f"Nie można odczytać pliku XLSX: {str(e)}"
                 }],
                 processing_time=time.time() - start_time,
-                agent_model=self.model
-            )
+                agent_model=self.model)
 
             # Log failed parsing
             if self.orchestrator:
@@ -107,8 +108,7 @@ Odpowiadaj ZAWSZE w JSON:
                         "model": self.model,
                         "success": False,
                         "processing_time": time.time() - start_time
-                    }
-                )
+                    })
 
             return error_result
 
@@ -132,31 +132,38 @@ Przeprowadź pełną walidację według zasad i zwróć wynik w JSON."""
 
         # Log prompt BEFORE API call
         if self.orchestrator:
-            self.orchestrator.log_prompt(
-                agent_name="ValidatorAgent",
-                prompt=validation_prompt,
-                response="[PENDING...]",
-                metadata={
-                    "filename": filename,
-                    "model": self.model,
-                    "file_size": len(file_data),
-                    "rows": parsed_data['rows'],
-                    "columns": len(parsed_data['columns']),
-                    "system_instructions": self.system_instructions[:500] + "..."
-                }
-            )
+            self.orchestrator.log_prompt(agent_name="ValidatorAgent",
+                                         prompt=validation_prompt,
+                                         response="[PENDING...]",
+                                         metadata={
+                                             "filename":
+                                             filename,
+                                             "model":
+                                             self.model,
+                                             "file_size":
+                                             len(file_data),
+                                             "rows":
+                                             parsed_data['rows'],
+                                             "columns":
+                                             len(parsed_data['columns']),
+                                             "system_instructions":
+                                             self.system_instructions[:500] +
+                                             "..."
+                                         })
 
         # Call DeepSeek with structured output
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_instructions},
-                    {"role": "user", "content": validation_prompt}
-                ],
+                messages=[{
+                    "role": "system",
+                    "content": self.system_instructions
+                }, {
+                    "role": "user",
+                    "content": validation_prompt
+                }],
                 temperature=0.1,  # Low temperature for consistent validation
-                response_format={"type": "json_object"}
-            )
+                response_format={"type": "json_object"})
 
             response_content = response.choices[0].message.content
 
@@ -167,57 +174,65 @@ Przeprowadź pełną walidację według zasad i zwróć wynik w JSON."""
                     prompt=validation_prompt,
                     response=response_content,
                     metadata={
-                        "filename": filename,
-                        "model": self.model,
-                        "processing_time": time.time() - start_time,
-                        "success": True,
-                        "system_instructions": self.system_instructions[:200] + "..."
-                    }
-                )
+                        "filename":
+                        filename,
+                        "model":
+                        self.model,
+                        "processing_time":
+                        time.time() - start_time,
+                        "success":
+                        True,
+                        "system_instructions":
+                        self.system_instructions[:200] + "..."
+                    })
 
         except Exception as e:
             # Log API failure
             if self.orchestrator:
-                self.orchestrator.log_prompt(
-                    agent_name="ValidatorAgent",
-                    prompt=validation_prompt,
-                    response=f"API ERROR: {str(e)}",
-                    metadata={
-                        "filename": filename,
-                        "model": self.model,
-                        "processing_time": time.time() - start_time,
-                        "success": False
-                    }
-                )
+                self.orchestrator.log_prompt(agent_name="ValidatorAgent",
+                                             prompt=validation_prompt,
+                                             response=f"API ERROR: {str(e)}",
+                                             metadata={
+                                                 "filename": filename,
+                                                 "model": self.model,
+                                                 "processing_time":
+                                                 time.time() - start_time,
+                                                 "success": False
+                                             })
 
-            return ValidationResult(
-                is_valid=False,
-                confidence=0.5,
-                errors=[{"column": "system", "row": 0, "issue": f"Błąd API: {str(e)}"}],
-                processing_time=time.time() - start_time,
-                agent_model=self.model
-            )
+            return ValidationResult(is_valid=False,
+                                    confidence=0.5,
+                                    errors=[{
+                                        "column": "system",
+                                        "row": 0,
+                                        "issue": f"Błąd API: {str(e)}"
+                                    }],
+                                    processing_time=time.time() - start_time,
+                                    agent_model=self.model)
 
         # Parse agent response
         try:
             result_data = json.loads(response_content)
         except json.JSONDecodeError:
-            return ValidationResult(
-                is_valid=False,
-                confidence=0.5,
-                errors=[{"column": "system", "row": 0, "issue": "Błąd parsowania odpowiedzi AI"}],
-                processing_time=time.time() - start_time,
-                agent_model=self.model
-            )
+            return ValidationResult(is_valid=False,
+                                    confidence=0.5,
+                                    errors=[{
+                                        "column":
+                                        "system",
+                                        "row":
+                                        0,
+                                        "issue":
+                                        "Błąd parsowania odpowiedzi AI"
+                                    }],
+                                    processing_time=time.time() - start_time,
+                                    agent_model=self.model)
 
-        return ValidationResult(
-            is_valid=result_data.get("is_valid", False),
-            confidence=result_data.get("confidence", 0.5),
-            errors=result_data.get("errors", []),
-            warnings=result_data.get("warnings", []),
-            processing_time=time.time() - start_time,
-            agent_model=self.model
-        )
+        return ValidationResult(is_valid=result_data.get("is_valid", False),
+                                confidence=result_data.get("confidence", 0.5),
+                                errors=result_data.get("errors", []),
+                                warnings=result_data.get("warnings", []),
+                                processing_time=time.time() - start_time,
+                                agent_model=self.model)
 
     async def _parse_excel_tool(self, file_data: bytes) -> Dict[str, Any]:
         """Tool: Parse XLSX file and extract structure"""
@@ -230,7 +245,10 @@ Przeprowadź pełną walidację według zasad i zwróć wynik w JSON."""
                 "rows": len(df),
                 "columns": list(df.columns),
                 "sample_data": df.head(5).fillna("").to_dict(orient="records"),
-                "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+                "dtypes": {
+                    col: str(dtype)
+                    for col, dtype in df.dtypes.items()
+                },
                 "null_counts": df.isnull().sum().to_dict()
             }
         except Exception as e:
@@ -241,10 +259,14 @@ Przeprowadź pełną walidację według zasad i zwróć wynik w JSON."""
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
-                messages=[{"role": "user", "content": "Test validation: return {\"status\": \"ok\"}"}],
+                messages=[{
+                    "role":
+                    "user",
+                    "content":
+                    "Test validation: return a JSON object {\"status\": \"ok\"}"
+                }],
                 max_tokens=20,
-                response_format={"type": "json_object"}
-            )
+                response_format={"type": "json_object"})
             return {
                 "status": "healthy",
                 "model": self.model,

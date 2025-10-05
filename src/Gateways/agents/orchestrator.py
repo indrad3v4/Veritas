@@ -1,4 +1,3 @@
-```python
 """
 AI Agent Orchestrator - WITH COMPREHENSIVE PROMPT LOGGING
 Based on OpenAI Agents SDK single-agent patterns
